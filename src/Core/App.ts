@@ -15,7 +15,7 @@ export class App {
             this._app = new Application();
             await this._app.init({
                 resizeTo: window,
-                backgroundColor: 0x1099bb,
+                backgroundColor: 0x1e293b,
                 sharedTicker: true,
                 autoDensity: true,
                 resolution: window.devicePixelRatio || 1,

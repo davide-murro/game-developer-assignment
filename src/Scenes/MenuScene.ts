@@ -1,9 +1,13 @@
-import { Text, TextStyle, Container } from 'pixi.js';
+import { Text, TextStyle, Container, Graphics } from 'pixi.js';
 import { BaseScene } from './BaseScene';
 import { SceneManager } from '../Core/SceneManager';
 import { AceOfShadowsScene } from './AceOfShadowsScene';
 import { MagicWordsScene } from './MagicWordsScene';
 import { PhoenixFlameScene } from './PhoenixFlameScene';
+import gsap from 'gsap';
+import { PixiPlugin } from 'gsap/PixiPlugin';
+
+gsap.registerPlugin(PixiPlugin);
 
 export class MenuScene extends BaseScene {
     private _buttons: Container[] = [];
@@ -14,49 +18,66 @@ export class MenuScene extends BaseScene {
     }
 
     private createMenu() {
-        const style = new TextStyle({
+        const titleStyle = new TextStyle({
             fontFamily: 'Arial',
-            fontSize: 36,
-            fontWeight: 'bold',
+            fontSize: 48,
+            fontWeight: '900',
             fill: '#ffffff',
             dropShadow: {
-                alpha: 0.5,
-                angle: Math.PI / 6,
-                blur: 4,
+                alpha: 0.3,
+                blur: 10,
                 color: '#000000',
-                distance: 6,
+                distance: 0,
             }
         });
 
+        const title = new Text({ text: 'GAME ASSIGNMENT', style: titleStyle });
+        title.anchor.set(0.5);
+        title.y = -150;
+        this.addChild(title);
+
+        const buttonStyle = new TextStyle({
+            fontFamily: 'Arial',
+            fontSize: 28,
+            fontWeight: '600',
+            fill: '#e2e8f0',
+        });
+
         const tasks = [
-            { name: '1. Ace of Shadows', scene: () => new AceOfShadowsScene() },
-            { name: '2. Magic Words', scene: () => new MagicWordsScene() },
-            { name: '3. Phoenix Flame', scene: () => new PhoenixFlameScene() },
+            { name: 'Ace of Shadows', scene: () => new AceOfShadowsScene() },
+            { name: 'Magic Words', scene: () => new MagicWordsScene() },
+            { name: 'Phoenix Flame', scene: () => new PhoenixFlameScene() },
         ];
 
         tasks.forEach((task, index) => {
-            const button = new Container();
-            const text = new Text({ text: task.name, style });
+            const buttonGroup = new Container();
 
-            button.addChild(text);
-            button.eventMode = 'static';
-            button.cursor = 'pointer';
+            const bg = new Graphics()
+                .roundRect(-200, -30, 400, 60, 15)
+                .fill({ color: 0x334155, alpha: 0.8 });
 
-            button.on('pointerdown', () => {
-                SceneManager.changeScene(task.scene());
+            bg.stroke({ width: 2, color: 0x475569 });
+
+            const text = new Text({ text: task.name, style: buttonStyle });
+            text.anchor.set(0.5);
+
+            buttonGroup.addChild(bg, text);
+            buttonGroup.eventMode = 'static';
+            buttonGroup.cursor = 'pointer';
+
+            buttonGroup.on('pointerdown', () => SceneManager.changeScene(task.scene()));
+
+            buttonGroup.on('pointerover', () => {
+                gsap.to(buttonGroup.scale, { x: 1.05, y: 1.05, duration: 0.2 });
             });
 
-            button.on('pointerover', () => {
-                button.scale.set(1.1);
+            buttonGroup.on('pointerout', () => {
+                gsap.to(buttonGroup.scale, { x: 1, y: 1, duration: 0.2 });
             });
 
-            button.on('pointerout', () => {
-                button.scale.set(1.0);
-            });
-
-            button.y = index * 80;
-            this.addChild(button);
-            this._buttons.push(button);
+            buttonGroup.y = index * 80;
+            this.addChild(buttonGroup);
+            this._buttons.push(buttonGroup);
         });
     }
 
@@ -65,10 +86,7 @@ export class MenuScene extends BaseScene {
     }
 
     public resize(width: number, height: number): void {
-        // Use bounds if width is 0, or just center roughly
-        const w = this.width || 400;
-        const h = this.height || 300;
-        this.x = width / 2 - w / 2;
-        this.y = height / 2 - h / 2;
+        this.x = width / 2;
+        this.y = height / 2;
     }
 }

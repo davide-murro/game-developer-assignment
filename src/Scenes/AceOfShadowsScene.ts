@@ -14,7 +14,7 @@ export class AceOfShadowsScene extends BaseScene {
     private _isFinished: boolean = false;
 
     private numberOfCards: number = 144;
-    private distanceBetweenCards: number = 3;
+    private distanceBetweenCards: number = 2;
 
     constructor() {
         super();
@@ -26,13 +26,32 @@ export class AceOfShadowsScene extends BaseScene {
     }
 
     private createCardTexture(): Texture {
+        const width = 100;
+        const height = 150;
         const g = new Graphics()
-            .roundRect(0, 0, 100, 150, 10)
-            .fill(0xffffff)
-            .stroke({ width: 2, color: 0x000000 });
+            // Card Base
+            .roundRect(0, 0, width, height, 12)
+            .fill(0x372020) // Deep dark blue base
+            .stroke({ width: 1, color: 0xf59e0b }); // Gold border
 
-        // Add a simple design on the card
-        g.circle(50, 75, 20).fill(0xff0000);
+        // Inner Decorative Border
+        g.roundRect(8, 8, width - 16, height - 16, 8)
+            .stroke({ width: 1, color: 0xd97706, alpha: 0.5 });
+
+        // Magic Sigil (Procedural design)
+        const centerX = width / 2;
+        const centerY = height / 2;
+
+        g.circle(centerX, centerY, 25).stroke({ width: 1, color: 0xf59e0b, alpha: 0.8 });
+
+        for (let i = 0; i < 4; i++) {
+            const angle = (i * Math.PI) / 2;
+            g.moveTo(centerX, centerY)
+                .lineTo(centerX + Math.cos(angle) * 35, centerY + Math.sin(angle) * 35)
+                .stroke({ width: 1, color: 0xfde68a, alpha: 0.6 });
+        }
+
+        g.star(centerX, centerY, 5, 15, 8).fill(0xf59e0b);
 
         return App.app.renderer.generateTexture(g);
     }
@@ -43,7 +62,7 @@ export class AceOfShadowsScene extends BaseScene {
             card.anchor.set(0.5);
             // Stack A position (left)
             card.x = -100;
-            card.y = 200 - i * this.distanceBetweenCards;
+            card.y = 150 - i * this.distanceBetweenCards;
             this._cardContainer.addChild(card);
             this._stackA.push(card);
         }
@@ -74,7 +93,7 @@ export class AceOfShadowsScene extends BaseScene {
         const card = this._stackA.pop()!;
         const cardsMoved = this._stackB.length + (this.numberOfCards - (this._stackA.length + this._stackB.length)) // make sure to get also the card that is moving
         const targetX = 100;
-        const targetY = 200 - cardsMoved * this.distanceBetweenCards;
+        const targetY = 150 - cardsMoved * this.distanceBetweenCards;
 
         // Bring to top
         this._cardContainer.setChildIndex(card, this._cardContainer.children.length - 1);

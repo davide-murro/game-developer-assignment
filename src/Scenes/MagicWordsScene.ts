@@ -1,7 +1,8 @@
-import { Container, Sprite, Text, TextStyle, Assets } from 'pixi.js';
+import { Container, Sprite, Text, TextStyle, Assets, Graphics } from 'pixi.js';
 import { BaseScene } from './BaseScene';
 import { SceneManager } from '../Core/SceneManager';
 import { MenuScene } from './MenuScene';
+import gsap from 'gsap';
 
 interface ContentItem {
     type: 'text' | 'image';
@@ -52,36 +53,52 @@ export class MagicWordsScene extends BaseScene {
 
     private async renderContent() {
         this._contentContainer.removeChildren();
-        let currentX = 0;
-        let currentY = 0;
-        const maxWidth = window.innerWidth - 100;
+
+        const maxWidth = window.innerWidth - 120;
         const lineHeight = 100;
 
-        for (const item of this._items) {
+        // Glassmorphic Backdrop for the whole content
+        const bg = new Graphics()
+            .roundRect(0, 0, maxWidth + 40, 500, 24)
+            .fill({ color: 0x1e293b, alpha: 0.4 })
+            .stroke({ width: 2, color: 0xffffff, alpha: 0.2 });
+
+        this._contentContainer.addChild(bg);
+
+        const innerContainer = new Container();
+        innerContainer.x = 20;
+        innerContainer.y = 20;
+        this._contentContainer.addChild(innerContainer);
+
+        let currentX = 0;
+        let currentY = 0;
+
+        for (const [index, item] of this._items.entries()) {
+            const itemContainer = new Container();
+
             if (item.type === 'text') {
                 const style = new TextStyle({
                     fill: item.color || '#ffffff',
                     fontSize: item.size || 24,
                     fontFamily: 'Arial',
+                    dropShadow: { alpha: 0.2, blur: 4, color: '#000000', distance: 2 }
                 });
                 const text = new Text({ text: item.value, style });
 
-                // Wrapping logic
                 if (currentX + text.width > maxWidth) {
                     currentX = 0;
                     currentY += lineHeight;
                 }
 
-                text.x = currentX;
-                text.y = currentY + (lineHeight - text.height) / 2;
-                this._contentContainer.addChild(text);
+                itemContainer.addChild(text);
+                itemContainer.x = currentX;
+                itemContainer.y = currentY + (lineHeight - text.height) / 2;
                 currentX += text.width;
             } else if (item.type === 'image') {
                 try {
                     const texture = await Assets.load(item.value);
                     const sprite = new Sprite(texture);
 
-                    // Scale image to fit line height roughly
                     const scale = (lineHeight * 0.8) / sprite.height;
                     sprite.scale.set(scale);
 
@@ -90,22 +107,35 @@ export class MagicWordsScene extends BaseScene {
                         currentY += lineHeight;
                     }
 
-                    sprite.x = currentX;
-                    sprite.y = currentY + (lineHeight - sprite.height) / 2;
-                    this._contentContainer.addChild(sprite);
-                    currentX += sprite.width + 10; // margin
+                    itemContainer.addChild(sprite);
+                    itemContainer.x = currentX;
+                    itemContainer.y = currentY + (lineHeight - sprite.height) / 2;
+                    currentX += sprite.width + 10;
                 } catch (e) {
                     console.error('Failed to load image:', item.value);
                 }
             }
+
+            itemContainer.alpha = 0;
+            itemContainer.y += 20;
+            innerContainer.addChild(itemContainer);
+
+            gsap.to(itemContainer, {
+                alpha: 1,
+                y: itemContainer.y - 20,
+                duration: 0.5,
+                delay: index * 0.2,
+                ease: 'back.out(1.7)'
+            });
         }
+
+        // Adjust bg height
+        bg.height = currentY + lineHeight + 40;
 
         this.resize(window.innerWidth, window.innerHeight);
     }
 
-    public update(_delta: number): void {
-        // No per-frame update needed
-    }
+    public update(_delta: number): void { }
 
     public resize(width: number, height: number): void {
         this._contentContainer.x = width / 2 - this._contentContainer.width / 2;
