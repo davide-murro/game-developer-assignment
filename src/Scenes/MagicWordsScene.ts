@@ -119,7 +119,7 @@ export class MagicWordsScene extends BaseScene {
      * Keeps the scrollContainer within bounds (top and bottom)
      */
     private clampScroll() {
-        const min = Math.min(0, this._mask.height - this._contentHeight - 40);
+        const min = Math.min(0, this._mask.height - this._contentHeight);
         this._currentScrollY = Math.max(min, Math.min(0, this._currentScrollY));
         this._scrollContainer.y = this._currentScrollY;
     }
@@ -249,8 +249,8 @@ export class MagicWordsScene extends BaseScene {
             gsap.to(row, { alpha: 1, duration: 0.4, delay: i * 0.1 });
         });
 
-        // Store final height for clampScroll logic
-        this._contentHeight = dialogueY;
+        // Store final height (subtracting the last gap for precise bottom clamping)
+        this._contentHeight = Math.max(0, dialogueY - 20);
         this.resize(window.innerWidth, window.innerHeight);
     }
 
@@ -261,7 +261,7 @@ export class MagicWordsScene extends BaseScene {
      */
     public resize(width: number, height: number) {
         const cWidth = Math.min(width - 40, 500); // Max width of 500px, but 100% (-margin) on small screens
-        const mHeight = height - 120; // Leave room for top/bottom margins
+        const mHeight = height - 150; // Leave room for top/bottom margins
 
         // Update mask
         this._mask.clear().rect(0, 0, cWidth, mHeight).fill(0xffffff);
