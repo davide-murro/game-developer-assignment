@@ -233,7 +233,7 @@ export class MagicWordsScene extends BaseScene {
             dialogueY += Math.max(avatarSize, content.y + content.height) + 20;
 
             // Fade-in animation for smoother appearance
-            gsap.to(row, { alpha: 1, duration: 0.4, delay: i * 0.1 });
+            gsap.to(row, { alpha: 1, duration: 0.4, delay: i * 3 });
         });
 
         // Store final height (subtracting the last gap for precise bottom clamping)
