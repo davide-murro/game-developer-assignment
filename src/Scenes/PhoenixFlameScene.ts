@@ -1,33 +1,51 @@
-import { Container, Graphics, Sprite, Text, TextStyle, BlurFilter } from 'pixi.js';
+import { Graphics, Text, TextStyle, BlurFilter, ParticleContainer, Particle } from 'pixi.js';
 import { BaseScene } from './BaseScene';
 import { SceneManager } from '../Core/SceneManager';
 import { MenuScene } from './MenuScene';
 import { App } from '../Core/App';
 
-export class PhoenixFlameScene extends BaseScene {
-    private _flames: Sprite[] = [];
-    private _flameContainer: Container;
+class FireParticle extends Particle {
+    public life: number = 0;
+    public maxLife: number = 0;
+    public speed: number = 0;
+    public jitter: number = 0;
+    public initialScale: number = 0;
 
-    private numberOfImages: number = 10;
+    constructor(options: any) {
+        super(options);
+    }
+}
+
+export class PhoenixFlameScene extends BaseScene {
+    private _particles: FireParticle[] = [];
+    private _particleContainer: ParticleContainer;
+    private _numSprites: number = 10;
 
     constructor() {
         super();
-        this._flameContainer = new Container();
-        this.addChild(this._flameContainer);
+
+        // Define which properties are dynamic for optimization
+        this._particleContainer = new ParticleContainer({
+            dynamicProperties: {
+                position: true,
+                scale: true,
+                alpha: true,
+                color: true,
+            },
+        });
+
+        this.addChild(this._particleContainer);
         this.setup();
         this.createBackButton();
     }
 
     private setup() {
-        // Create a more vibrant flame texture: a gradient-like blurred ellipse
+        // Create a vibrant flame texture
         const g = new Graphics()
-            // Outer glow
             .ellipse(0, 0, 40, 100)
             .fill({ color: 0xff4400, alpha: 0.4 })
-            // Mid glow
             .ellipse(0, 0, 25, 70)
             .fill({ color: 0xffaa00, alpha: 0.7 })
-            // Core
             .ellipse(0, 0, 12, 40)
             .fill({ color: 0xffffcc, alpha: 1.0 });
 
@@ -37,19 +55,32 @@ export class PhoenixFlameScene extends BaseScene {
 
         const texture = App.app.renderer.generateTexture(g);
 
-        // Create exactly this.numberOfImages sprites for the flame
-        for (let i = 0; i < this.numberOfImages; i++) {
-            const flame = new Sprite(texture);
-            flame.anchor.set(0.5, 0.9);
-            flame.blendMode = 'add';
-            this._flameContainer.addChild(flame);
-            this._flames.push(flame);
-        }
+        for (let i = 0; i < this._numSprites; i++) {
+            const p = new FireParticle({
+                texture,
+                anchor: { x: 0.5, y: 0.9 },
+            });
 
-        // Add some embers (not counted towards the 10-sprite flame core if we assume the core is the Pillar)
-        // But for strictness, let's keep it minimal if required. 
-        // The prompt says "Max 10 images", so I'll be careful.
-        // If "10 images" means 10 sprites total, I should stick to 10.
+            this.resetParticle(p, true);
+            this._particleContainer.addParticle(p);
+            this._particles.push(p);
+        }
+    }
+
+    private resetParticle(p: FireParticle, startFull: boolean = false) {
+        p.life = startFull ? Math.random() : 0;
+        p.maxLife = 1 + Math.random() * 2;
+        p.speed = 100 + Math.random() * 150;
+        p.jitter = 2 + Math.random() * 5;
+        p.x = (Math.random() - 0.5) * 40;
+        p.y = 0;
+        p.initialScale = 0.3 + Math.random() * 0.3;
+        p.scaleX = p.scaleY = p.initialScale;
+        p.alpha = 0;
+
+        const tints = [0xff4400, 0xff8800, 0xffaa00, 0xffff00];
+        const tint = tints[Math.floor(Math.random() * tints.length)];
+        p.color = tint;
     }
 
     private createBackButton() {
@@ -65,26 +96,43 @@ export class PhoenixFlameScene extends BaseScene {
         this.addChild(text);
     }
 
-    public update(_delta: number): void {
-        this._flames.forEach((flame, i) => {
-            const time = Date.now() / 1000;
+    public update(deltaMS: number): void {
+        const dt = deltaMS / 1000;
 
-            // Jitter and sway
-            flame.x = Math.sin(time * 10 + i) * 10;
-            flame.scale.set(
-                0.8 + Math.random() * 0.4,
-                1.0 + Math.sin(time * 5 + i) * 0.5
-            );
-            flame.alpha = 0.5 + Math.random() * 0.5;
+        this._particles.forEach(p => {
+            p.life += dt;
 
-            // Rising effect (simulated by vertical oscillation)
-            // Just shifting the position slightly to look like flickering flames
-            flame.y = Math.random() * 5;
+            // Rise up
+            p.y -= p.speed * dt;
+
+            // Sway/Jitter (Small random horizontal movement)
+            p.x += (Math.random() - 0.5) * p.jitter;
+
+            // Lifecycle progress (0 to 1)
+            const progress = p.life / p.maxLife;
+
+            // Fade in and out
+            if (progress < 0.2) {
+                p.alpha = progress / 0.2;
+            } else if (progress > 0.6) {
+                p.alpha = 1 - (progress - 0.6) / 0.4;
+            } else {
+                p.alpha = 1;
+            }
+
+            // Scale down as it rises
+            const currentScale = p.initialScale * (1 - progress * 0.6);
+            p.scaleX = p.scaleY = currentScale;
+
+            // Recycling
+            if (p.life >= p.maxLife) {
+                this.resetParticle(p);
+            }
         });
     }
 
     public resize(width: number, height: number): void {
-        this._flameContainer.x = width / 2;
-        this._flameContainer.y = height * 0.8;
+        this._particleContainer.x = width / 2;
+        this._particleContainer.y = height * 0.8;
     }
 }

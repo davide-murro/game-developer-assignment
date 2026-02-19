@@ -12,9 +12,8 @@ export class AceOfShadowsScene extends BaseScene {
     private _cardContainer: Container;
     private _timer: number = 0;
     private _isFinished: boolean = false;
-
-    private numberOfCards: number = 144;
-    private distanceBetweenCards: number = 2;
+    private _numberOfCards: number = 144;
+    private _distanceBetweenCards: number = 2;
 
     constructor() {
         super();
@@ -31,7 +30,7 @@ export class AceOfShadowsScene extends BaseScene {
         const g = new Graphics()
             // Card Base
             .roundRect(0, 0, width, height, 12)
-            .fill(0x372020) // Deep dark blue base
+            .fill(0x372020) // brown base
             .stroke({ width: 1, color: 0xf59e0b }); // Gold border
 
         // Inner Decorative Border
@@ -57,12 +56,12 @@ export class AceOfShadowsScene extends BaseScene {
     }
 
     private setup() {
-        for (let i = 0; i < this.numberOfCards; i++) {
+        for (let i = 0; i < this._numberOfCards; i++) {
             const card = new Sprite(this._cardTexture);
             card.anchor.set(0.5);
             // Stack A position (left)
             card.x = -100;
-            card.y = 150 - i * this.distanceBetweenCards;
+            card.y = 150 - i * this._distanceBetweenCards;
             this._cardContainer.addChild(card);
             this._stackA.push(card);
         }
@@ -91,9 +90,9 @@ export class AceOfShadowsScene extends BaseScene {
         }
 
         const card = this._stackA.pop()!;
-        const cardsMoved = this._stackB.length + (this.numberOfCards - (this._stackA.length + this._stackB.length)) // make sure to get also the card that is moving
+        const cardsMoved = this._stackB.length + (this._numberOfCards - (this._stackA.length + this._stackB.length)) // make sure to get also the card that is moving
         const targetX = 100;
-        const targetY = 150 - cardsMoved * this.distanceBetweenCards;
+        const targetY = 150 - cardsMoved * this._distanceBetweenCards;
 
         // Bring to top
         this._cardContainer.setChildIndex(card, this._cardContainer.children.length - 1);
