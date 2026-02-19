@@ -54,20 +54,27 @@ export class MagicWordsScene extends BaseScene {
     private async renderContent() {
         this._contentContainer.removeChildren();
 
-        const maxWidth = window.innerWidth - 120;
-        const lineHeight = 100;
+        const padding = 20;
+        const mobileBreakpoint = 600;
+        const width = window.innerWidth;
+        const isMobile = width < mobileBreakpoint;
 
-        // Glassmorphic Backdrop for the whole content
+        // Dynamic maxWidth based on screen size
+        const maxWidth = isMobile ? width - 60 : Math.min(width - 120, 800);
+        const lineHeight = isMobile ? 80 : 100;
+        const baseFontSize = isMobile ? 18 : 24;
+
+        // Glassmorphic Backdrop
         const bg = new Graphics()
-            .roundRect(0, 0, maxWidth + 40, 500, 24)
-            .fill({ color: 0x1e293b, alpha: 0.4 })
+            .roundRect(0, 0, maxWidth + padding * 2, 500, 24)
+            .fill({ color: 0x1e293b, alpha: 0.6 })
             .stroke({ width: 2, color: 0xffffff, alpha: 0.2 });
 
         this._contentContainer.addChild(bg);
 
         const innerContainer = new Container();
-        innerContainer.x = 20;
-        innerContainer.y = 20;
+        innerContainer.x = padding;
+        innerContainer.y = padding;
         this._contentContainer.addChild(innerContainer);
 
         let currentX = 0;
@@ -77,9 +84,13 @@ export class MagicWordsScene extends BaseScene {
             const itemContainer = new Container();
 
             if (item.type === 'text') {
+                // Scale font size for mobile if it's too large
+                let fontSize = item.size || baseFontSize;
+                if (isMobile && fontSize > 24) fontSize *= 0.75;
+
                 const style = new TextStyle({
                     fill: item.color || '#ffffff',
-                    fontSize: item.size || 24,
+                    fontSize: fontSize,
                     fontFamily: 'Arial',
                     dropShadow: { alpha: 0.2, blur: 4, color: '#000000', distance: 2 }
                 });
@@ -99,7 +110,7 @@ export class MagicWordsScene extends BaseScene {
                     const texture = await Assets.load(item.value);
                     const sprite = new Sprite(texture);
 
-                    const scale = (lineHeight * 0.8) / sprite.height;
+                    const scale = (lineHeight * 0.7) / sprite.height;
                     sprite.scale.set(scale);
 
                     if (currentX + sprite.width > maxWidth) {
@@ -117,27 +128,35 @@ export class MagicWordsScene extends BaseScene {
             }
 
             itemContainer.alpha = 0;
-            itemContainer.y += 20;
+            itemContainer.y += 10;
             innerContainer.addChild(itemContainer);
 
             gsap.to(itemContainer, {
                 alpha: 1,
-                y: itemContainer.y - 20,
-                duration: 0.5,
-                delay: index * 0.2,
-                ease: 'back.out(1.7)'
+                y: itemContainer.y - 10,
+                duration: 0.4,
+                delay: index * 0.1,
+                ease: 'power2.out'
             });
         }
 
-        // Adjust bg height
-        bg.height = currentY + lineHeight + 40;
-
+        bg.height = currentY + lineHeight + padding * 2;
         this.resize(window.innerWidth, window.innerHeight);
     }
 
     public update(_delta: number): void { }
 
     public resize(width: number, height: number): void {
+        // Scale the entire container if it's still too big for the height
+        const margin = 40;
+        const availableHeight = height - margin * 2;
+        if (this._contentContainer.height > availableHeight) {
+            const scale = availableHeight / this._contentContainer.height;
+            this._contentContainer.scale.set(scale);
+        } else {
+            this._contentContainer.scale.set(1);
+        }
+
         this._contentContainer.x = width / 2 - this._contentContainer.width / 2;
         this._contentContainer.y = height / 2 - this._contentContainer.height / 2;
     }

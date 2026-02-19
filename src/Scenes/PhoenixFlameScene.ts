@@ -134,5 +134,15 @@ export class PhoenixFlameScene extends BaseScene {
     public resize(width: number, height: number): void {
         this._particleContainer.x = width / 2;
         this._particleContainer.y = height * 0.8;
+
+        // Mobile responsiveness: scale down flame if screen is narrow
+        const mobileBreakpoint = 600;
+        const minScale = 0.7;
+        if (width < mobileBreakpoint) {
+            const scale = width / mobileBreakpoint;
+            this._particleContainer.scale.set(Math.max(scale, minScale));
+        } else {
+            this._particleContainer.scale.set(1);
+        }
     }
 }

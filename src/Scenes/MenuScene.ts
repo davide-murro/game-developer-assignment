@@ -81,12 +81,20 @@ export class MenuScene extends BaseScene {
         });
     }
 
-    public update(_delta: number): void {
-        // No update logic needed for static menu
-    }
+    public update(_delta: number): void { }
 
     public resize(width: number, height: number): void {
         this.x = width / 2;
         this.y = height / 2;
+
+        // Mobile responsiveness: scale down if screen is narrow
+        const mobileBreakpoint = 600;
+        const minScale = 0.6;
+        if (width < mobileBreakpoint) {
+            const scale = width / mobileBreakpoint;
+            this.scale.set(Math.max(scale, minScale));
+        } else {
+            this.scale.set(1);
+        }
     }
 }

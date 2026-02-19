@@ -121,5 +121,15 @@ export class AceOfShadowsScene extends BaseScene {
     public resize(width: number, height: number): void {
         this._cardContainer.x = width / 2;
         this._cardContainer.y = height / 2;
+
+        // Mobile responsiveness: scale down card stack if screen is narrow
+        const mobileBreakpoint = 600;
+        const maxScale = 0.6;
+        if (width < mobileBreakpoint) {
+            const scale = width / mobileBreakpoint;
+            this._cardContainer.scale.set(Math.max(scale, maxScale));
+        } else {
+            this._cardContainer.scale.set(1);
+        }
     }
 }
