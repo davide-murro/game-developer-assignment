@@ -1,25 +1,43 @@
-import { Container, Sprite, Text, TextStyle, Assets, Graphics } from 'pixi.js';
+import { Container, Sprite, Text, TextStyle, Assets, Graphics, Rectangle } from 'pixi.js';
 import { BaseScene } from './BaseScene';
 import { SceneManager } from '../Core/SceneManager';
 import { MenuScene } from './MenuScene';
 import gsap from 'gsap';
 
-interface ContentItem {
-    type: 'text' | 'image';
-    value: string;
-    size?: number;
-    color?: string;
-}
-
 export class MagicWordsScene extends BaseScene {
-    private _contentContainer: Container;
-    private _items: ContentItem[] = [];
+    // UI Hierarchy: viewport (clips content) -> background & scrollContainer (moves up/down)
+    private _scrollContainer = new Container();
+    private _mask = new Graphics();
+    private _background = new Graphics();
+    private _viewport = new Container();
+
+    private _data: any = null;
+    private _emojiTextures = new Map<string, any>();
+    private _avatarTextures = new Map<string, any>();
+
+    // Scrolling state
+    private _isDragging = false;
+    private _lastY = 0;
+    private _velocityY = 0;
+    private _currentScrollY = 0;
+    private _contentHeight = 0;
 
     constructor() {
         super();
-        this._contentContainer = new Container();
-        this.addChild(this._contentContainer);
+
+        // Setup the scrolling hierarchy
+        // viewport is the 'window' through which we see the scrolling content
+        this.addChild(this._viewport);
+        this._viewport.addChild(this._background);
+        this._viewport.addChild(this._scrollContainer);
+        this._viewport.addChild(this._mask);
+
+        // Initialize mask with content to prevent rendering warnings in PixiJS v8
+        this._mask.rect(0, 0, 1, 1).fill(0xffffff);
+        this._scrollContainer.mask = this._mask;
+
         this.createBackButton();
+        this.setupScrolling();
         this.loadData();
     }
 
@@ -32,132 +50,239 @@ export class MagicWordsScene extends BaseScene {
         text.cursor = 'pointer';
         text.x = 8;
         text.y = 32;
-        text.on('pointerdown', () => SceneManager.changeScene(new MenuScene()));
+        text.on('pointerdown', () => {
+            gsap.killTweensOf(this); // Clean up any active scroll animations
+            SceneManager.changeScene(new MenuScene());
+        });
         this.addChild(text);
     }
 
-    private async loadData() {
-        // Mocking API call
-        this._items = [
-            { type: 'text', value: 'Welcome to the Magic Words!', size: 36, color: '#ffff00' },
-            { type: 'image', value: 'https://pixijs.io/examples/examples/assets/bunny.png' },
-            { type: 'text', value: ' This is an example of ', size: 24, color: '#ffffff' },
-            { type: 'image', value: 'https://pixijs.io/examples/examples/assets/p2.jpeg' },
-            { type: 'text', value: ' mixing text and images dynamically.', size: 18, color: '#00ff00' },
-            { type: 'image', value: 'https://pixijs.io/examples/examples/assets/flowerTop.png' },
-            { type: 'text', value: ' Pretty cool, right?', size: 30, color: '#ff00ff' }
-        ];
+    /**
+     * Initializes drag-to-scroll and touch scrolling listeners
+     */
+    private setupScrolling() {
+        this.eventMode = 'static';
+        this._viewport.eventMode = 'static';
 
-        await this.renderContent();
+        const onStart = (e: any) => {
+            this._isDragging = true;
+            this._lastY = e.global ? e.global.y : 0;
+            this._velocityY = 0;
+            gsap.killTweensOf(this); // Stop active inertia animation when user touches screen
+        };
+
+        const onMove = (e: any) => {
+            if (!this._isDragging) return;
+            const currentY = e.global ? e.global.y : 0;
+            const delta = currentY - this._lastY;
+            this._lastY = currentY;
+            this._velocityY = delta;
+            this.scroll(delta);
+        };
+
+        const onEnd = () => {
+            if (!this._isDragging) return;
+            this._isDragging = false;
+
+            // Apply inertia if the drag was fast enough
+            if (Math.abs(this._velocityY) > 1) {
+                gsap.to(this, {
+                    _currentScrollY: this._currentScrollY + this._velocityY * 10,
+                    duration: 0.8,
+                    ease: 'power3.out',
+                    onUpdate: () => this.clampScroll()
+                });
+            }
+        };
+
+        this._viewport.on('pointerdown', onStart);
+        this.on('globalpointermove', onMove);
+        this.on('pointerup', onEnd);
+        this.on('pointerupoutside', onEnd);
+
+        window.addEventListener('wheel', this.onWheel, { passive: false });
     }
 
-    private async renderContent() {
-        this._contentContainer.removeChildren();
+    private onWheel = (e: WheelEvent) => {
+        if (SceneManager.currentScene === this) {
+            e.preventDefault(); // Prevent page scrolling
+            this.scroll(-e.deltaY);
+        }
+    };
 
-        const padding = 20;
-        const mobileBreakpoint = 600;
-        const width = window.innerWidth;
-        const isMobile = width < mobileBreakpoint;
+    private scroll(d: number) {
+        this._currentScrollY += d;
+        this.clampScroll();
+    }
 
-        // Dynamic maxWidth based on screen size
-        const maxWidth = isMobile ? width - 60 : Math.min(width - 120, 800);
-        const lineHeight = isMobile ? 80 : 100;
-        const baseFontSize = isMobile ? 18 : 24;
+    /**
+     * Keeps the scrollContainer within bounds (top and bottom)
+     */
+    private clampScroll() {
+        const min = Math.min(0, this._mask.height - this._contentHeight - 40);
+        this._currentScrollY = Math.max(min, Math.min(0, this._currentScrollY));
+        this._scrollContainer.y = this._currentScrollY;
+    }
 
-        // Glassmorphic Backdrop
-        const bg = new Graphics()
-            .roundRect(0, 0, maxWidth + padding * 2, 500, 24)
-            .fill({ color: 0x1e293b, alpha: 0.6 })
-            .stroke({ width: 2, color: 0xffffff, alpha: 0.2 });
+    /**
+     * Fetches dialogue and assets from the API
+     */
+    private async loadData() {
+        try {
+            const res = await fetch('https://private-624120-softgamesassignment.apiary-mock.com/v2/magicwords');
+            this._data = await res.json();
+            if (!this._data) return;
 
-        this._contentContainer.addChild(bg);
+            const assets: any[] = [];
+            this._data.emojies.forEach((e: any) => assets.push({ alias: `e_${e.name}`, src: e.url }));
+            this._data.avatars.forEach((a: any) => assets.push({ alias: `a_${a.name}`, src: a.url }));
 
-        const innerContainer = new Container();
-        innerContainer.x = padding;
-        innerContainer.y = padding;
-        this._contentContainer.addChild(innerContainer);
-
-        let currentX = 0;
-        let currentY = 0;
-
-        for (const [index, item] of this._items.entries()) {
-            const itemContainer = new Container();
-
-            if (item.type === 'text') {
-                // Scale font size for mobile if it's too large
-                let fontSize = item.size || baseFontSize;
-                if (isMobile && fontSize > 24) fontSize *= 0.75;
-
-                const style = new TextStyle({
-                    fill: item.color || '#ffffff',
-                    fontSize: fontSize,
-                    fontFamily: 'Arial',
-                    dropShadow: { alpha: 0.2, blur: 4, color: '#000000', distance: 2 }
-                });
-                const text = new Text({ text: item.value, style });
-
-                if (currentX + text.width > maxWidth) {
-                    currentX = 0;
-                    currentY += lineHeight;
+            assets.forEach(a => {
+                // reaching into resolver to check for existing keys
+                if (!Assets.resolver.hasKey(a.alias)) {
+                    Assets.add({ ...a, parser: 'loadTextures' });
                 }
+            });
+            const bundle = await Assets.load(assets.map(a => a.alias));
 
-                itemContainer.addChild(text);
-                itemContainer.x = currentX;
-                itemContainer.y = currentY + (lineHeight - text.height) / 2;
-                currentX += text.width;
-            } else if (item.type === 'image') {
-                try {
-                    const texture = await Assets.load(item.value);
-                    const sprite = new Sprite(texture);
+            this._data.emojies.forEach((e: any) => this._emojiTextures.set(e.name, bundle[`e_${e.name}`]));
+            this._data.avatars.forEach((a: any) => this._avatarTextures.set(a.name, bundle[`a_${a.name}`]));
 
-                    const scale = (lineHeight * 0.7) / sprite.height;
-                    sprite.scale.set(scale);
+            this.renderDialogue();
+        } catch (e) {
+            console.error('MagicWords error:', e);
+        }
+    }
 
-                    if (currentX + sprite.width > maxWidth) {
-                        currentX = 0;
-                        currentY += lineHeight;
-                    }
+    /**
+     * Main engine for rendering text mixed with emojis and character avatars
+     */
+    private renderDialogue() {
+        if (!this._data) return;
+        this._scrollContainer.removeChildren();
 
-                    itemContainer.addChild(sprite);
-                    itemContainer.x = currentX;
-                    itemContainer.y = currentY + (lineHeight - sprite.height) / 2;
-                    currentX += sprite.width + 10;
-                } catch (e) {
-                    console.error('Failed to load image:', item.value);
+        const width = window.innerWidth, cWidth = Math.min(width - 40, 500), avatarSize = 40, gap = 12;
+        const textStyle = new TextStyle({ fill: '#ffffff', fontSize: 16, fontFamily: 'Arial', whiteSpace: 'pre' });
+
+        // Measure the precise width of a space character for this font style
+        const spaceW = (new Text({ text: 'A B', style: textStyle }).width - new Text({ text: 'AB', style: textStyle }).width) || 4;
+
+        let dialogueY = 0;
+
+        this._data.dialogue.forEach((entry: any, i: number) => {
+            const row = new Container();
+            row.alpha = 0;
+            row.y = dialogueY;
+
+            const avatar = this._data.avatars.find((a: any) => a.name === entry.name);
+            const tex = this._avatarTextures.get(entry.name);
+            let bX = 0, bW = cWidth;
+
+            // Handle Character Avatars (left or right positioning)
+            if (tex) {
+                const s = new Sprite(tex);
+                s.width = s.height = avatarSize;
+                if (avatar?.position === 'right') {
+                    s.x = cWidth - avatarSize;
+                    bW -= (avatarSize + gap);
+                } else {
+                    bX = avatarSize + gap;
+                    bW -= (avatarSize + gap);
                 }
+                row.addChild(s);
             }
 
-            itemContainer.alpha = 0;
-            itemContainer.y += 10;
-            innerContainer.addChild(itemContainer);
+            const bubble = new Container();
+            bubble.x = bX;
+            row.addChild(bubble);
 
-            gsap.to(itemContainer, {
-                alpha: 1,
-                y: itemContainer.y - 10,
-                duration: 0.4,
-                delay: index * 0.1,
-                ease: 'power2.out'
+            // Render name
+            const name = new Text({ text: entry.name, style: { fill: '#94a3b8', fontSize: 12, fontWeight: 'bold' } });
+            bubble.addChild(name);
+
+            const content = new Container();
+            content.y = name.height + 4;
+            bubble.addChild(content);
+
+            // Parsing Engine: Identify emojis like {satisfied} and normal text
+            let lX = 0, lY = 0, lH = 24;
+            const regex = /\{([^}]+)\}/g;
+            let last = 0, match;
+            const chunks: any[] = [];
+            while ((match = regex.exec(entry.text))) {
+                if (match.index > last) chunks.push({ type: 'text', val: entry.text.substring(last, match.index) });
+                chunks.push({ type: 'emoji', val: match[1] });
+                last = regex.lastIndex;
+            }
+            if (last < entry.text.length) chunks.push({ type: 'text', val: entry.text.substring(last) });
+
+            // Layout Engine: Word-wrapping mixed text and emojis
+            chunks.forEach(chunk => {
+                if (chunk.type === 'text') {
+                    // Split by whitespace but keep spaces to render them specifically
+                    chunk.val.split(/(\s+)/).forEach((word: string) => {
+                        if (!word) return;
+                        const t = new Text({ text: word, style: textStyle });
+                        // Check for wrap (don't wrap pure whitespace unless at start of line)
+                        if (word.trim() && lX + t.width > bW && lX > 0) { lX = 0; lY += lH; }
+                        t.position.set(lX, lY); content.addChild(t);
+                        lX += (word.trim() === '' ? spaceW * word.length : t.width);
+                    });
+                } else {
+                    const t = this._emojiTextures.get(chunk.val);
+                    if (t) {
+                        const s = new Sprite(t);
+                        s.width = s.height = 20;
+                        // Wrap check for emoji
+                        if (lX + s.width > bW && lX > 0) { lX = 0; lY += lH; }
+                        s.position.set(lX, lY + (lH - s.height) / 2); content.addChild(s);
+                        lX += s.width;
+                    }
+                }
             });
-        }
 
-        bg.height = currentY + lineHeight + padding * 2;
+            this._scrollContainer.addChild(row);
+            // Calculate next row position based on the tallest element (avatar or text block)
+            dialogueY += Math.max(avatarSize, content.y + content.height) + 20;
+
+            // Fade-in animation for smoother appearance
+            gsap.to(row, { alpha: 1, duration: 0.4, delay: i * 0.1 });
+        });
+
+        // Store final height for clampScroll logic
+        this._contentHeight = dialogueY;
         this.resize(window.innerWidth, window.innerHeight);
     }
 
-    public update(_delta: number): void { }
+    public update() { }
 
-    public resize(width: number, height: number): void {
-        // Scale the entire container if it's still too big for the height
-        const margin = 40;
-        const availableHeight = height - margin * 2;
-        if (this._contentContainer.height > availableHeight) {
-            const scale = availableHeight / this._contentContainer.height;
-            this._contentContainer.scale.set(scale);
-        } else {
-            this._contentContainer.scale.set(1);
-        }
+    /**
+     * Handles responsive layout adjustments
+     */
+    public resize(width: number, height: number) {
+        const cWidth = Math.min(width - 40, 500); // Max width of 500px, but 100% (-margin) on small screens
+        const mHeight = height - 120; // Leave room for top/bottom margins
 
-        this._contentContainer.x = width / 2 - this._contentContainer.width / 2;
-        this._contentContainer.y = height / 2 - this._contentContainer.height / 2;
+        // Update mask
+        this._mask.clear().rect(0, 0, cWidth, mHeight).fill(0xffffff);
+
+        // Update background
+        this._background.clear()
+            .roundRect(-15, -15, cWidth + 30, mHeight + 30, 20)
+            .fill({ color: 0x000000, alpha: 0.3 })
+            .stroke({ width: 2, color: 0xffffff, alpha: 0.1 });
+
+        // Update viewport
+        this._viewport.position.set((width - cWidth) / 2, 100);
+
+        // Set hitArea on viewport to allow interactions and scrolling
+        this._viewport.hitArea = new Rectangle(-15, -15, cWidth + 30, mHeight + 30);
+
+        this.clampScroll();
+    }
+
+    public destroy(opt?: any) {
+        window.removeEventListener('wheel', this.onWheel);
+        super.destroy(opt);
     }
 }

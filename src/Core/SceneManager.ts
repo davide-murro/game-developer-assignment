@@ -5,6 +5,10 @@ export class SceneManager {
     private static _stage: Container;
     private static _currentScene: BaseScene;
 
+    public static get currentScene(): BaseScene {
+        return this._currentScene;
+    }
+
     public static initialize(stage: Container) {
         this._stage = stage;
     }
