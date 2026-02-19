@@ -1,8 +1,8 @@
-import { Graphics, Text, TextStyle, BlurFilter, ParticleContainer, Particle } from 'pixi.js';
+import { Graphics, BlurFilter, ParticleContainer, Particle } from 'pixi.js';
 import { BaseScene } from './BaseScene';
+import { App } from '../Core/App';
 import { SceneManager } from '../Core/SceneManager';
 import { MenuScene } from './MenuScene';
-import { App } from '../Core/App';
 
 class FireParticle extends Particle {
     public life: number = 0;
@@ -36,7 +36,9 @@ export class PhoenixFlameScene extends BaseScene {
 
         this.addChild(this._particleContainer);
         this.setup();
-        this.createBackButton();
+        this.createBackButton(() => {
+            SceneManager.changeScene(new MenuScene());
+        });
     }
 
     private setup() {
@@ -83,18 +85,6 @@ export class PhoenixFlameScene extends BaseScene {
         p.color = tint;
     }
 
-    private createBackButton() {
-        const text = new Text({
-            text: 'Back to Menu',
-            style: new TextStyle({ fill: 'white', fontSize: 24 })
-        });
-        text.eventMode = 'static';
-        text.cursor = 'pointer';
-        text.x = 8;
-        text.y = 32;
-        text.on('pointerdown', () => SceneManager.changeScene(new MenuScene()));
-        this.addChild(text);
-    }
 
     public update(deltaMS: number): void {
         const dt = deltaMS / 1000;
@@ -137,12 +127,14 @@ export class PhoenixFlameScene extends BaseScene {
 
         // Mobile responsiveness: scale down flame if screen is narrow
         const mobileBreakpoint = 600;
-        const minScale = 0.7;
+        const minScale = 0.6;
         if (width < mobileBreakpoint) {
             const scale = width / mobileBreakpoint;
             this._particleContainer.scale.set(Math.max(scale, minScale));
         } else {
             this._particleContainer.scale.set(1);
         }
+
+        this.resizeBackButton(width);
     }
 }

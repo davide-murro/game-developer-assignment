@@ -1,8 +1,8 @@
 import { Container, Sprite, Text, TextStyle, Assets, Graphics, Rectangle } from 'pixi.js';
 import { BaseScene } from './BaseScene';
 import { SceneManager } from '../Core/SceneManager';
-import { MenuScene } from './MenuScene';
 import gsap from 'gsap';
+import { MenuScene } from './MenuScene';
 
 export class MagicWordsScene extends BaseScene {
     // UI Hierarchy: viewport (clips content) -> background & scrollContainer (moves up/down)
@@ -36,25 +36,12 @@ export class MagicWordsScene extends BaseScene {
         this._mask.rect(0, 0, 1, 1).fill(0xffffff);
         this._scrollContainer.mask = this._mask;
 
-        this.createBackButton();
-        this.setupScrolling();
-        this.loadData();
-    }
-
-    private createBackButton() {
-        const text = new Text({
-            text: 'Back to Menu',
-            style: new TextStyle({ fill: 'white', fontSize: 24 })
-        });
-        text.eventMode = 'static';
-        text.cursor = 'pointer';
-        text.x = 8;
-        text.y = 32;
-        text.on('pointerdown', () => {
+        this.createBackButton(() => {
             gsap.killTweensOf(this); // Clean up any active scroll animations
             SceneManager.changeScene(new MenuScene());
         });
-        this.addChild(text);
+        this.setupScrolling();
+        this.loadData();
     }
 
     /**
@@ -278,6 +265,7 @@ export class MagicWordsScene extends BaseScene {
         // Set hitArea on viewport to allow interactions and scrolling
         this._viewport.hitArea = new Rectangle(-15, -15, cWidth + 30, mHeight + 30);
 
+        this.resizeBackButton(width);
         this.clampScroll();
     }
 

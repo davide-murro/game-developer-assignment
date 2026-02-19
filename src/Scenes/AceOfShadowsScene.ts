@@ -1,9 +1,9 @@
-import { Container, Graphics, Sprite, Texture, Text, TextStyle } from 'pixi.js';
+import { Container, Texture, Sprite, Graphics } from 'pixi.js';
 import { BaseScene } from './BaseScene';
-import { SceneManager } from '../Core/SceneManager';
-import { MenuScene } from './MenuScene';
 import { App } from '../Core/App';
 import gsap from 'gsap';
+import { SceneManager } from '../Core/SceneManager';
+import { MenuScene } from './MenuScene';
 
 export class AceOfShadowsScene extends BaseScene {
     private _stackA: Sprite[] = [];
@@ -21,7 +21,10 @@ export class AceOfShadowsScene extends BaseScene {
         this.addChild(this._cardContainer);
         this._cardTexture = this.createCardTexture();
         this.setup();
-        this.createBackButton();
+        this.createBackButton(() => {
+            gsap.killTweensOf(this._cardContainer.children);
+            SceneManager.changeScene(new MenuScene());
+        });
     }
 
     private createCardTexture(): Texture {
@@ -65,22 +68,6 @@ export class AceOfShadowsScene extends BaseScene {
             this._cardContainer.addChild(card);
             this._stackA.push(card);
         }
-    }
-
-    private createBackButton() {
-        const text = new Text({
-            text: 'Back to Menu',
-            style: new TextStyle({ fill: 'white', fontSize: 24 })
-        });
-        text.eventMode = 'static';
-        text.cursor = 'pointer';
-        text.x = 8;
-        text.y = 32;
-        text.on('pointerdown', () => {
-            gsap.killTweensOf(this._cardContainer.children);
-            SceneManager.changeScene(new MenuScene());
-        });
-        this.addChild(text);
     }
 
     private moveCard() {
@@ -131,5 +118,7 @@ export class AceOfShadowsScene extends BaseScene {
         } else {
             this._cardContainer.scale.set(1);
         }
+
+        this.resizeBackButton(width);
     }
 }

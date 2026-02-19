@@ -1,4 +1,4 @@
-import { Text, TextStyle, Container, Graphics } from 'pixi.js';
+import { Text, TextStyle, Container } from 'pixi.js';
 import { BaseScene } from './BaseScene';
 import { SceneManager } from '../Core/SceneManager';
 import { AceOfShadowsScene } from './AceOfShadowsScene';
@@ -36,13 +36,6 @@ export class MenuScene extends BaseScene {
         title.y = -150;
         this.addChild(title);
 
-        const buttonStyle = new TextStyle({
-            fontFamily: 'Arial',
-            fontSize: 28,
-            fontWeight: '600',
-            fill: '#e2e8f0',
-        });
-
         const tasks = [
             { name: 'Ace of Shadows', scene: () => new AceOfShadowsScene() },
             { name: 'Magic Words', scene: () => new MagicWordsScene() },
@@ -50,36 +43,13 @@ export class MenuScene extends BaseScene {
         ];
 
         tasks.forEach((task, index) => {
-            const buttonGroup = new Container();
-
-            const bg = new Graphics()
-                .roundRect(-200, -30, 400, 60, 15)
-                .fill({ color: 0x334155, alpha: 0.8 });
-
-            bg.stroke({ width: 2, color: 0x475569 });
-
-            const text = new Text({ text: task.name, style: buttonStyle });
-            text.anchor.set(0.5);
-
-            buttonGroup.addChild(bg, text);
-            buttonGroup.eventMode = 'static';
-            buttonGroup.cursor = 'pointer';
-
-            buttonGroup.on('pointerdown', () => SceneManager.changeScene(task.scene()));
-
-            buttonGroup.on('pointerover', () => {
-                gsap.to(buttonGroup.scale, { x: 1.05, y: 1.05, duration: 0.2 });
-            });
-
-            buttonGroup.on('pointerout', () => {
-                gsap.to(buttonGroup.scale, { x: 1, y: 1, duration: 0.2 });
-            });
-
-            buttonGroup.y = index * 80;
-            this.addChild(buttonGroup);
-            this._buttons.push(buttonGroup);
+            const button = this.createButton(task.name, () => SceneManager.changeScene(task.scene()));
+            button.y = index * 80;
+            this.addChild(button);
+            this._buttons.push(button);
         });
     }
+
 
     public update(_delta: number): void { }
 
