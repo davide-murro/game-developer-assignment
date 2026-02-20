@@ -2,6 +2,7 @@ import { Container, Graphics, Text, TextStyle } from 'pixi.js';
 import gsap from 'gsap';
 
 export abstract class BaseScene extends Container {
+    protected _headerContainer?: Container;
     protected _backButton?: Container;
 
     constructor() {
@@ -33,31 +34,32 @@ export abstract class BaseScene extends Container {
         buttonGroup.addChild(bg, buttonText);
         buttonGroup.eventMode = 'static';
         buttonGroup.cursor = 'pointer';
+        buttonGroup.scale = 1;
 
         buttonGroup.on('pointerdown', onClick);
 
         buttonGroup.on('pointerover', () => {
-            gsap.to(buttonGroup.scale, { x: buttonGroup.scale.x + 0.05, y: buttonGroup.scale.y + 0.05, duration: 0.2 });
+            gsap.to(buttonGroup.scale, { x: 1.05, y: 1.05, duration: 0.2, overwrite: 'auto' });
         });
 
         buttonGroup.on('pointerout', () => {
-            gsap.to(buttonGroup.scale, { x: buttonGroup.scale.x - 0.05, y: buttonGroup.scale.y - 0.05, duration: 0.2 });
+            gsap.to(buttonGroup.scale, { x: 1, y: 1, duration: 0.2, overwrite: 'auto' });
         });
 
         return buttonGroup;
     }
 
-    protected createBackButton(onBack?: () => void): void {
-        this._backButton = this.createButton('Back', () => {
-            if (onBack) onBack();
-        }, 120, 50, 18);
+    protected createHeader(onBack: () => void): void {
+        this._headerContainer = new Container();
+        this._backButton = this.createButton('Back', onBack, 120, 50, 18);
 
-        this.addChild(this._backButton);
-        this.resizeBackButton(window.innerWidth);
+        this._headerContainer.addChild(this._backButton);
+        this.addChild(this._headerContainer);
+        this.resizeHeader(window.innerWidth);
     }
 
-    protected resizeBackButton(width: number): void {
-        if (!this._backButton) return;
+    protected resizeHeader(width: number): void {
+        if (!this._headerContainer) return;
 
         const mobileBreakpoint = 600;
         const minScale = 0.6;
@@ -66,11 +68,10 @@ export abstract class BaseScene extends Container {
         if (width < mobileBreakpoint) {
             scale = Math.max(width / mobileBreakpoint, minScale);
         }
-        this._backButton.x = (window.innerWidth / 2);
-        this._backButton.y = 50;
 
-        this._backButton.scale.set(scale);
-
+        this._headerContainer.x = (window.innerWidth / 2);
+        this._headerContainer.y = 50;
+        this._headerContainer.scale.set(scale);
     }
 }
 

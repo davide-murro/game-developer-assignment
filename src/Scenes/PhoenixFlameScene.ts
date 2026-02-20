@@ -36,7 +36,7 @@ export class PhoenixFlameScene extends BaseScene {
 
         this.addChild(this._particleContainer);
         this.setup();
-        this.createBackButton(() => {
+        this.createHeader(() => {
             SceneManager.changeScene(new MenuScene());
         });
     }
@@ -135,6 +135,6 @@ export class PhoenixFlameScene extends BaseScene {
             this._particleContainer.scale.set(1);
         }
 
-        this.resizeBackButton(width);
+        this.resizeHeader(width);
     }
 }

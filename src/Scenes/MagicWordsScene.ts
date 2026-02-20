@@ -36,7 +36,7 @@ export class MagicWordsScene extends BaseScene {
         this._mask.rect(0, 0, 1, 1).fill(0xffffff);
         this._scrollContainer.mask = this._mask;
 
-        this.createBackButton(() => {
+        this.createHeader(() => {
             gsap.killTweensOf(this); // Clean up any active scroll animations
             SceneManager.changeScene(new MenuScene());
         });
@@ -265,7 +265,7 @@ export class MagicWordsScene extends BaseScene {
         // Set hitArea on viewport to allow interactions and scrolling
         this._viewport.hitArea = new Rectangle(-15, -15, cWidth + 30, mHeight + 30);
 
-        this.resizeBackButton(width);
+        this.resizeHeader(width);
         this.clampScroll();
     }
 

@@ -21,7 +21,7 @@ export class AceOfShadowsScene extends BaseScene {
         this.addChild(this._cardContainer);
         this._cardTexture = this.createCardTexture();
         this.setup();
-        this.createBackButton(() => {
+        this.createHeader(() => {
             gsap.killTweensOf(this._cardContainer.children);
             SceneManager.changeScene(new MenuScene());
         });
@@ -119,6 +119,6 @@ export class AceOfShadowsScene extends BaseScene {
             this._cardContainer.scale.set(1);
         }
 
-        this.resizeBackButton(width);
+        this.resizeHeader(width);
     }
 }
