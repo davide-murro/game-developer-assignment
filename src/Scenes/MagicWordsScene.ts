@@ -38,6 +38,7 @@ export class MagicWordsScene extends BaseScene {
 
         this.createHeader(() => {
             gsap.killTweensOf(this); // Clean up any active scroll animations
+            gsap.killTweensOf(this._scrollContainer.children); // Clean up row fade-ins
             SceneManager.changeScene(new MenuScene());
         });
         this.setupScrolling();
